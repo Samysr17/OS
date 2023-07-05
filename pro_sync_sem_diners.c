@@ -16,19 +16,16 @@ int count_enter = 0, count_exit = 0;
 int i = 0, j = 0;
 
 void enterRestaurant()
-{
+{   sem_wait(&mutex_enter);
     printf("Diners are entering the restaurant NOW.\n");
-    sem_wait(&mutex_enter);
-    
-    printf("\n %dth ",count_enter);
+    // printf("\n %dth ",count_enter);
     count_enter++;
-    if (count_enter == N)
+    if (count_enter == N-1)
     {
         sem_post(&enter_done);
         count_enter = 0;
     }
     sem_post(&mutex_enter);
-
     sem_post(&entering_diners);
 }
 
@@ -40,8 +37,9 @@ void exitRestaurant()
 {
     printf("Diners are exiting the restaurant.\n");
     sem_wait(&mutex_exit);
+    // sem_wait(&entering_diners);//check
     count_exit++;
-    if (count_exit == N)
+    if (count_exit == N-1)
     {
         sem_post(&exit_done);
         count_exit = 0;
@@ -58,13 +56,16 @@ void openFrontDoor()
 }
 
 void closeFrontDoor(){
-  printf("All %d diners have entered.\n", N); }
+  printf("All %d diners have entered.\n", N);
+}
 
 void serveFood()
-{
+{  
+    // sem_wait(&exiting_diners);
+  sem_wait(&entering_diners);
     printf("We are ready to serve Food.\n");
-    sem_post(&entering_diners);
-    sem_wait(&exiting_diners);
+    
+    
 }
 
 void openBackDoor(){
@@ -72,8 +73,9 @@ void openBackDoor(){
 }
 
 void closeBackDoor(){
+    // sem_wait(&exit_done);
     printf("Closing Back door Now.\n");
-    sem_wait(&exit_done);
+    
 }
 void *diner(void *args)
 {
@@ -93,9 +95,6 @@ void *restaurant(void *args)
         openFrontDoor();
         closeFrontDoor();
         serveFood();
-        enterRestaurant();
-        eat();
-        exitRestaurant();
         openBackDoor();
         closeBackDoor();
         i++;
@@ -117,7 +116,10 @@ int main()
 
     pthread_create(&thread_restaurant, NULL, restaurant, NULL);
     pthread_create(&thread_diner, NULL, diner, NULL);
-
+   
+   
     pthread_join(thread_restaurant, NULL);
     pthread_join(thread_diner, NULL);
+  return  0;
+    
 }
