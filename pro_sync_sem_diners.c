@@ -13,113 +13,95 @@ sem_t enter_done, exit_done;
 sem_t mutex_enter, mutex_exit;
 
 int count_enter = 0, count_exit = 0;
-int i = 0, j = 0;
+int i = 0;
+int j = 0;
 
-void enterRestaurant()
-{   sem_wait(&mutex_enter);
-    printf("Diners are entering the restaurant NOW.\n");
-    // printf("\n %dth ",count_enter);
-    count_enter++;
-    if (count_enter == N-1)
-    {
-        sem_post(&enter_done);
-        count_enter = 0;
-    }
-    sem_post(&mutex_enter);
-    sem_post(&entering_diners);
+void enterRestaurant() {
+  sem_wait(&mutex_enter);
+  printf("Diners are entering the restaurant NOW.\n");
+  printf("\n%d no.", count_enter);
+  count_enter++;
+  if (count_enter == N) {
+    sem_post(&enter_done);
+    count_enter = 0;
+  }
+  sem_post(&mutex_enter);
+  sem_post(&entering_diners);
 }
 
-void eat(){
-  printf("Diner is eating Food.\n"); 
+void eat() { printf("Diner is eating Food.\n"); }
+
+void exitRestaurant() {
+  printf("Diner is exiting the restaurant.\n");
+  sem_wait(&mutex_exit);
+  // sem_wait(&entering_diners);//check
+  count_exit++;
+  if (count_exit == N) {
+    sem_post(&exit_done);
+    count_exit = 0;
+  }
+
+  sem_post(&mutex_exit);
+  sem_post(&exiting_diners);
 }
 
-void exitRestaurant()
-{
-    printf("Diners are exiting the restaurant.\n");
-    sem_wait(&mutex_exit);
-    // sem_wait(&entering_diners);//check
-    count_exit++;
-    if (count_exit == N-1)
-    {
-        sem_post(&exit_done);
-        count_exit = 0;
-    }
-
-    sem_post(&mutex_exit);
-    sem_post(&exiting_diners);
+void openFrontDoor() {
+  printf("We are opening the Front Doors :\n");
+  printf("Only %d diners can come in\n", N);
 }
 
-void openFrontDoor()
-{
-    printf("We are opening the Front Doors :\n");
-    printf("Only %d diners can come in\n", N);
+void closeFrontDoor() { printf("All %d diners have entered.\n", N); }
+
+void serveFood() {
+  // sem_wait(&exiting_diners);
+  printf("We are ready to serve Food.\n");
+  // sem_wait(&entering_diners);
 }
 
-void closeFrontDoor(){
-  printf("All %d diners have entered.\n", N);
+void openBackDoor() { printf("Back door is Open.\n"); }
+
+void closeBackDoor() {
+  // sem_wait(&exit_done);
+  printf("Closing Back door Now.\n");
+}
+void *diner(void *args) {
+  while (j < 5) {
+    enterRestaurant();
+    eat();
+    exitRestaurant();
+    j++;
+  }
 }
 
-void serveFood()
-{  
-    // sem_wait(&exiting_diners);
-  sem_wait(&entering_diners);
-    printf("We are ready to serve Food.\n");
-    
-    
+void *restaurant(void *args) {
+
+  while (i < 5) {
+    openFrontDoor();
+    closeFrontDoor();
+    serveFood();
+    sleep(5);
+    openBackDoor();
+    closeBackDoor();
+    i++;
+  }
 }
 
-void openBackDoor(){
-  printf("Back door is Open.\n"); 
-}
+int main() {
+  sem_init(&entering_diners, 0, 0);
+  sem_init(&exiting_diners, 0, 0);
+  sem_init(&enter_done, 0, 0);
+  sem_init(&exit_done, 0, 0);
+  sem_init(&mutex_enter, 0, 1);
+  sem_init(&mutex_exit, 0, 1);
 
-void closeBackDoor(){
-    // sem_wait(&exit_done);
-    printf("Closing Back door Now.\n");
-    
-}
-void *diner(void *args)
-{
-    while (j < 5)
-    {
-        enterRestaurant();
-        eat();
-        exitRestaurant();
-        j++;
-    }
-}
+  pthread_t thread_diner, thread_restaurant;
 
-void *restaurant(void *args)
-{
-    while (i < 5)
-    {
-        openFrontDoor();
-        closeFrontDoor();
-        serveFood();
-        openBackDoor();
-        closeBackDoor();
-        i++;
-    }
-}
+  pthread_create(&thread_restaurant, NULL, restaurant, NULL);
+  pthread_create(&thread_diner, NULL, diner, NULL);
 
-
-
-int main()
-{
-    sem_init(&entering_diners, 0, 0);
-    sem_init(&exiting_diners, 0, 0);
-    sem_init(&enter_done, 0, 0);
-    sem_init(&exit_done, 0, 0);
-    sem_init(&mutex_enter, 0, 1);
-    sem_init(&mutex_exit, 0, 1);
-
-    pthread_t thread_diner, thread_restaurant;
-
-    pthread_create(&thread_restaurant, NULL, restaurant, NULL);
-    pthread_create(&thread_diner, NULL, diner, NULL);
-   
-   
-    pthread_join(thread_restaurant, NULL);
-    pthread_join(thread_diner, NULL);
-  return  0;
-    
+  pthread_join(thread_restaurant, NULL);
+  pthread_join(thread_diner, NULL);
+  // pthread_join(thread_restaurant, NULL);
+  //  pthread_join(thread_diner, NULL);
+  return 0;
 }
